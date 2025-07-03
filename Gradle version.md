@@ -488,6 +488,48 @@ jacocoTestReport {
     }
 }
 
+=============================================
+
+org.gradle.internal.resolve.ArtifactNotFoundException: Could not find aws-java-sdk-kms-1.12.743.jar (com.amazonaws:aws-java-sdk-kms:1.12.743).
+Searched in the following locations:
+    https://repo1.uhc.com/artifactory/repoauth/com/amazonaws/aws-java-sdk-kms/1.12.743/aws-java-sdk-kms-1.12.743.jar
+	at org.gradle.internal.resolve.result.DefaultBuildableArtifactFileResolveResult.notFound(DefaultBuildableArtifactFileResolveResult.java:28)
+	at org.gradle.api.internal.artifacts.repositories.resolver.ExternalResourceResolver$RemoteRepositoryAccess.resolveArtifact(ExternalResourceResolver.java:468)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.CachingModuleComponentRepository$ResolveAndCacheRepositoryAccess.resolveArtifact(CachingModuleComponentRepository.java:463)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.lambda$resolveArtifact$12(ErrorHandlingModuleComponentRepository.java:169)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.tryResolveAndMaybeDisable(ErrorHandlingModuleComponentRepository.java:236)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.performOperationWithRetries(ErrorHandlingModuleComponentRepository.java:193)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.resolveArtifact(ErrorHandlingModuleComponentRepository.java:167)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.RepositoryChainArtifactResolver.resolveArtifactLater(RepositoryChainArtifactResolver.java:76)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.RepositoryChainArtifactResolver.lambda$resolveArtifact$0(RepositoryChainArtifactResolver.java:64)
+	at org.gradle.internal.model.CalculatedValueContainerFactory$SupplierBackedCalculator.calculateValue(CalculatedValueContainerFactory.java:74)
+	at org.gradle.internal.model.CalculatedValueContainer$CalculationState.lambda$attachValue$0(CalculatedValueContainer.java:229)
+	at org.gradle.internal.Try.ofFailable(Try.java:41)
+	at org.gradle.internal.model.CalculatedValueContainer$CalculationState.attachValue(CalculatedValueContainer.java:224)
+	at org.gradle.internal.model.CalculatedValueContainer.finalizeIfNotAlready(CalculatedValueContainer.java:197)
+	at org.gradle.internal.model.CalculatedValueContainer.finalizeIfNotAlready(CalculatedValueContainer.java:188)
+	at org.gradle.api.internal.artifacts.ivyservice.resolveengine.artifact.ArtifactBackedResolvedVariant$DownloadArtifactFile.run(ArtifactBackedResolvedVariant.java:189)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationExecutor$QueueWorker.execute(DefaultBuildOperationExecutor.java:161)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.runOperation(DefaultBuildOperationQueue.java:272)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.doRunBatch(DefaultBuildOperationQueue.java:253)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.lambda$runBatch$0(DefaultBuildOperationQueue.java:238)
+	at org.gradle.internal.resources.AbstractResourceLockRegistry.whileDisallowingLockChanges(AbstractResourceLockRegistry.java:50)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.whileDisallowingProjectLockChanges(DefaultWorkerLeaseService.java:236)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.lambda$runBatch$1(DefaultBuildOperationQueue.java:238)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:264)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:128)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.runBatch(DefaultBuildOperationQueue.java:224)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.run(DefaultBuildOperationQueue.java:192)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
 task copyDependencies(type: Copy) {
     from configurations.runtimeClasspath
     into 'dependencies'
