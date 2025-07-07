@@ -132,11 +132,20 @@ import com.optum.pure.trackingstore.factory.TrackingStoreFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Modernized Spring Boot configuration class for bean creation.
+ * Java 21 best practices: 
+ * - Public bean methods
+ * - No unnecessary logger
+ * - Class marked as final for immutability
+ * - No redundant @ComponentScan
+ */
 @Configuration
-public class PureConfig {
+public final class PureConfig {
 
     @Bean
     public TrackingStore trackingStore() {
+        // Factory pattern ensures separation of creation logic
         return TrackingStoreFactory.getTrackingStore();
     }
 
@@ -170,18 +179,27 @@ import org.springframework.kafka.core.ProducerFactory;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Modern Kafka producer configuration using Java 21 and Spring Boot best practices.
+ */
 @Configuration
-public class KafkaProducerConfig {
+public final class KafkaProducerConfig {
 
+    /**
+     * Returns Kafka producer configuration as a Map.
+     * 
+     * Uses ConfigurationManager to read environment or application properties.
+     */
     @Bean
     public Map<String, Object> producerConfig() {
-        var props = new HashMap<String, Object>();
+        Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, ConfigurationManager.get("KAFKA_BROKERS"));
         props.put(ProducerConfig.CLIENT_ID_CONFIG, ConfigurationManager.get("CLIENT_ID"));
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         props.put(ProducerConfig.ACKS_CONFIG, ConfigurationManager.get("PRODUCER_ACK_CONFIG"));
         props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, ConfigurationManager.get("ENABLE_IDEMPOTENCE_CONFIG"));
+        // SSL/SASL configuration
         props.put("security.protocol", ConfigurationManager.get("SECURITY_PROTOCOL"));
         props.put("ssl.truststore.location", Utils.getKafkaResourcePath() + ConfigurationManager.get("SSL_TRUSTSTORE_FILE"));
         props.put("ssl.truststore.password", ConfigurationManager.get("SSL_TRUSTSTORE_PASSWORD"));
@@ -191,16 +209,24 @@ public class KafkaProducerConfig {
         return props;
     }
 
+    /**
+     * Creates a ProducerFactory with String key and value types.
+     */
     @Bean
     public ProducerFactory<String, String> producerFactory() {
         return new DefaultKafkaProducerFactory<>(producerConfig());
     }
 
+    /**
+     * Creates a KafkaTemplate for sending messages.
+     */
     @Bean
     public KafkaTemplate<String, String> kafkaTemplate() {
         return new KafkaTemplate<>(producerFactory());
     }
 }
+
+=================================================================================================================
 
 5. src/main/java/com/optum/pure/notificationstore/Producer.java
 
@@ -208,9 +234,30 @@ package com.optum.pure.notificationstore;
 
 import com.optum.pure.model.notification.Notification;
 
+import java.io.IOException;
+import java.util.concurrent.ExecutionException;
+
+/**
+ * Notification Producer Interface for persisting notifications to the Notification Store.
+ */
 public interface Producer {
-    void sendNotification(Notification notification, long elapsedTimeTrackingRecordInsertion) throws Exception;
+
+    /**
+     * Persists a notification to the Notification Store.
+     *
+     * @param notification Notification object to persist (should not be null)
+     * @param elapsedTimeTrackingRecordInsertion Elapsed time (ms) taken for tracking record insertion
+     * @throws InterruptedException if thread is interrupted during notification send
+     * @throws ExecutionException if sending the notification fails
+     * @throws IOException if an IO error occurs during notification persistence
+     */
+    void sendNotification(Notification notification, long elapsedTimeTrackingRecordInsertion)
+            throws InterruptedException, ExecutionException, IOException;
+
+    // If you really want to keep "throws Exception" for maximum compatibility, you can,
+    // but using specific exceptions is a better practice in modern Java.
 }
+
 
 =======================================================================================================================
 
@@ -224,7 +271,7 @@ import com.optum.pure.model.notification.Notification;
 import com.optum.pure.notificationstore.Producer;
 import com.optum.pure.trackingstore.TrackingStore;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import org.elasticsearch.common.StopWatch;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
@@ -235,16 +282,22 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+/**
+ * Kafka Notification Store - Producer implementation
+ */
 @Component
 @RequiredArgsConstructor
-@Slf4j
-public class KafkaProducer implements Producer {
+@Log4j2 // Lombok annotation, auto-creates static final log variable
+public final class KafkaProducer implements Producer {
 
+    // Time metrics fields for tracking
     private static final String TIME_TO_INSERT_TRACKING_RECORD = "timeToInsertTrackingRecord";
     private static final String TIME_TO_EMIT_NOTIFICATION = "timeToEmitNotification";
     private static final String NOTIFICATION_EMIT_TIMESTAMP = "notificationEmitTimestamp";
-    private static final List<String> fieldList = List.of(TIME_TO_EMIT_NOTIFICATION,
-            NOTIFICATION_EMIT_TIMESTAMP, TIME_TO_INSERT_TRACKING_RECORD);
+
+    // Use List.of() for immutability (Java 9+)
+    private static final List<String> fieldList = List.of(
+            TIME_TO_EMIT_NOTIFICATION, NOTIFICATION_EMIT_TIMESTAMP, TIME_TO_INSERT_TRACKING_RECORD);
 
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final TrackingStore trackingStore;
@@ -253,33 +306,45 @@ public class KafkaProducer implements Producer {
     @Override
     public void sendNotification(Notification notification, long elapsedTimeTrackingRecordInsertion) throws Exception {
         log.debug("Producer called");
-        var stopWatch = new StopWatch().start();
+        StopWatch stopWatch = new StopWatch().start();
+
         if (notification == null) {
             log.error("Kafka Producer - Notification is null");
             stopWatch.stop();
-            throw new Exception("Kafka Producer - Notification is null");
+            throw new IllegalArgumentException("Kafka Producer - Notification is null");
         }
+
         try {
-            var trackingId = notification.getTrackingId();
-            var emitTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"));
+            String trackingId = notification.getTrackingId();
+            String emitTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"));
             log.debug("Kafka Producer - Emitting notification with trackingId: {}, time: {}", trackingId, emitTimestamp);
-            ListenableFuture<SendResult<String, String>> result = kafkaTemplate.send(ConfigurationManager.get("TOPIC_NAME"), trackingId, gson.toJson(notification));
-            var sendResult = result.get();
-            log.debug("Kafka Producer - Notification sent with key: {}, to topic: {} with partition: {} & offset: {}", trackingId,
-                    sendResult.getRecordMetadata().topic(),
-                    sendResult.getRecordMetadata().partition(),
-                    sendResult.getRecordMetadata().offset());
+
+            // Send Kafka message (async)
+            ListenableFuture<SendResult<String, String>> result = kafkaTemplate.send(
+                    ConfigurationManager.get("TOPIC_NAME"), trackingId, gson.toJson(notification));
+
+            // Await send result for metadata/logging
+            SendResult<String, String> sendResult = result.get();
+            log.debug("Kafka Producer - Notification sent with key: {}, to topic: {} with partition: {} & offset: {}",
+                    trackingId, sendResult.getRecordMetadata().topic(),
+                    sendResult.getRecordMetadata().partition(), sendResult.getRecordMetadata().offset());
+
             stopWatch.stop();
             long timeTakenToEmitNotification = stopWatch.totalTime().getMillis();
             List<Object> valueList = List.of(timeTakenToEmitNotification, emitTimestamp, elapsedTimeTrackingRecordInsertion);
             trackingStore.updateRecord(trackingId, fieldList, valueList);
-            log.debug("[Metrics] Kafka Producer - trackingId: {}, timeTaken(ms): {}", notification.getTrackingId(), timeTakenToEmitNotification);
+
+            log.debug("[Metrics] Kafka Producer - trackingId: {}, timeTaken(ms): {}",
+                    trackingId, timeTakenToEmitNotification);
+
         } catch (Exception e) {
-            log.error("Error occurred in Kafka Producer while sending notification for trackingId - {}", notification.getTrackingId(), e);
-            throw e;
+            log.error("Error occurred in Kafka Producer while sending notification for trackingId - {}",
+                    notification.getTrackingId(), e);
+            throw e; // Re-throw for caller to handle
         }
     }
 }
+
 
 =============================================================================================================================
 
@@ -307,23 +372,32 @@ import com.optum.pure.model.requestobjects.v2.TokenTuple;
 import com.optum.pure.notificationstore.Producer;
 import com.optum.pure.trackingstore.TrackingStore;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.elasticsearch.common.StopWatch;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.util.StopWatch;
 import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import jakarta.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @RestController
 @RequiredArgsConstructor
-@Slf4j
+@Log4j2
 public class PUREServiceController {
 
     private static final String ERROR_MSG = "Unable to process the request";
@@ -331,6 +405,7 @@ public class PUREServiceController {
     private static final String INVALID_ERR_MSG = "Invalid Request";
     private static final String INVALID_TRACKING_ID = "Invalid trackingId";
     private static final String CORRELATION_ID_HEADER = "optum-cid-ext";
+    // Use List.of() for immutable config lists (Java 9+)
     private static final List<String> tokenTypes = List.of(ConfigurationManager.get("VALID_TOKEN_TYPES").split(","));
     private static final List<String> validCallerIds = List.of(ConfigurationManager.get("VALID_CALLERID").split(","));
     private static final int GET_TRACKING_RECORD_RETRY = 2;
@@ -340,11 +415,13 @@ public class PUREServiceController {
     private final LogStore logStore;
     private final Producer producer;
 
-    @GetMapping(value = {"/claims-enrollments/v2/{tracking-id}"}, produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = {"/claims-enrollments/v2/{tracking-id}"},
+            produces = MediaType.APPLICATION_JSON_VALUE)
     public Object getClaimsEnrollments(@PathVariable("tracking-id") String trackingId,
-                                      HttpServletRequest request,
-                                      @RequestHeader("Caller-Id") String callerId) {
-        var stopWatch = new StopWatch().start();
+                                       HttpServletRequest request,
+                                       @RequestHeader("Caller-Id") String callerId) {
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
         TrackingRecord trackingRecord = null;
         String correlationId = request.getHeader(CORRELATION_ID_HEADER);
         Object response = null;
@@ -363,67 +440,78 @@ public class PUREServiceController {
                         log.error("Invalid trackingId - {}", trackingId.replace("\n", ""));
                     }
                 } catch (Exception e) {
-                    log.error("claims-enrollments API - Exception occurred while fetching response for trackingId -> {}", trackingId.replace("\n", ""), e);
+                    log.error("claims-enrollments API - Exception occurred while fetching response for " +
+                            "trackingId -> {}", trackingId.replace("\n", ""), e);
                     response = new TrackingStatus(null, StatusEnum.ERRORED.toString(), ERROR_MSG);
                 }
             }
         } finally {
-            insertLogRecord(getAbstractPathfromServletPath(request.getServletPath()), trackingId, correlationId, callerId, stopWatch, getStatus(response));
+            insertLogRecord(getAbstractPathfromServletPath(request.getServletPath()), trackingId, correlationId,
+                    callerId, stopWatch, getStatus(response));
         }
         return response;
     }
 
     private TrackingRecord fetchTrackingRecord(String trackingId, int retries) throws IOException {
         TrackingRecord trackingRecord = trackingStore.getTrackingRecord(trackingId);
-        return (trackingRecord == null || trackingRecord.getTrackingId() == null) && (retries > 0) ? fetchTrackingRecord(trackingId, retries - 1) : trackingRecord;
+        return (trackingRecord == null || trackingRecord.getTrackingId() == null) && (retries > 0) ?
+                fetchTrackingRecord(trackingId, retries - 1) : trackingRecord;
     }
 
     private Object getResponse(TrackingRecord trackingRecord) throws IOException {
+        Object response = null;
         if (trackingRecord.getStatus().equals(StatusEnum.COMPLETED_SUCCESSFULLY.toString())) {
             try {
-                var stopWatch = new StopWatch().start();
-                Object response = fileStore.readObject(trackingRecord.getOutputArtifactUri());
+                StopWatch stopWatch = new StopWatch();
+                stopWatch.start();
+                response = fileStore.readObject(trackingRecord.getOutputArtifactUri());
                 stopWatch.stop();
                 updateRecord(trackingRecord, stopWatch);
-                return ResponseEntity.ok().header("Content-Encoding", "gzip").body(response);
             } catch (IOException e) {
-                log.error("claims-enrollments API - Failed to fetch result from FileStore for trackingId - {}", trackingRecord.getTrackingId());
+                log.error("claims-enrollments API - Failed to fetch result from FileStore for trackingId - {}",
+                        trackingRecord.getTrackingId());
                 throw e;
             }
         } else {
-            var trackingStatus = new TrackingStatus(trackingRecord.getTrackingId(), trackingRecord.getStatus());
+            TrackingStatus trackingStatus = new TrackingStatus(trackingRecord.getTrackingId(),
+                    trackingRecord.getStatus());
             trackingStatus.setErrorDescription(trackingRecord.getErrorDescription());
             return trackingStatus;
         }
+        return ResponseEntity.ok().header("Content-Encoding", "gzip").body(response);
     }
 
     private void updateRecord(TrackingRecord trackingRecord, StopWatch stopWatch) {
         try {
             trackingStore.updateRecord(trackingRecord.getTrackingId(),
                     Collections.singletonList("timeToReadOutputFromFileStore"),
-                    Collections.singletonList(stopWatch.totalTime().getMillis()));
+                    Collections.singletonList(stopWatch.getTotalTimeMillis()));
         } catch (Exception e) {
-            log.error("claims-enrollments API - Failed to update TrackingStore for trackingId - {}", trackingRecord.getTrackingId(), e);
+            log.error("claims-enrollments API - Failed to update TrackingStore for trackingId - {}",
+                    trackingRecord.getTrackingId(), e);
         }
     }
 
-    @PostMapping(value = "/deidentified-tokens/v2", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/deidentified-tokens/v2", consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
     public TrackingStatus submitDeidentifiedTokensV2(@RequestBody String requestObject,
                                                      HttpServletRequest request,
                                                      @RequestHeader("Caller-Id") String callerId) {
-        var totalTimeStopWatch = new StopWatch().start();
+        StopWatch totalTimeStopWatch = new StopWatch();
+        totalTimeStopWatch.start();
         TrackingStatus response = null;
         String receivedTimestamp = Utils.getCurrentTimestamp();
         String trackingId = Utils.generateTrackingId();
         String correlationId = request.getHeader(CORRELATION_ID_HEADER);
         log.debug("TrackingId generated for request - {}", trackingId.replace("\n", ""));
         try {
-            var postTokensV2 = new ObjectMapper().enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION).readValue(requestObject, PostTokensV2.class);
+            PostTokensV2 postTokensV2 = new ObjectMapper().enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
+                    .readValue(requestObject, PostTokensV2.class);
             boolean validCallerId = validateCallerId(callerId);
             String requestValidationResponse = validateRequestV2(postTokensV2);
             if (!validCallerId) {
                 response = buildCallerIdValidationResponse(callerId);
-            } else if (!requestValidationResponse.isEmpty()) {
+            } else if (requestValidationResponse.length() > 0) {
                 response = buildRequestValidationResponse(requestValidationResponse);
             } else {
                 log.debug("Request validation successful for trackingId - {}", trackingId.replace("\n", ""));
@@ -442,27 +530,34 @@ public class PUREServiceController {
             log.error("Error while processing the request {}", trackingId.replace("\n", ""), e);
             response = new TrackingStatus(null, StatusEnum.ERRORED.toString(), ERROR_MSG);
         } finally {
-            insertLogRecord(request.getServletPath(), trackingId, correlationId, callerId, totalTimeStopWatch, getStatus(response));
+            insertLogRecord(request.getServletPath(), trackingId, correlationId, callerId, totalTimeStopWatch,
+                    getStatus(response));
         }
         return response;
     }
 
     private void emitNotification(TrackingRecord trackingRecord, long timeToWriteTrackingRecord) throws Exception {
-        var notification = new Notification(trackingRecord.getTrackingId(), trackingRecord.getVersion(), trackingRecord.getInputArtifactUri());
+        Notification notification = new Notification(trackingRecord.getTrackingId(), trackingRecord.getVersion(),
+                trackingRecord.getInputArtifactUri());
         try {
             producer.sendNotification(notification, timeToWriteTrackingRecord);
         } catch (Exception e) {
-            log.error("deidentified-tokens API - Emit notification failed for trackingId -> {}", trackingRecord.getTrackingId(), e);
+            log.error("deidentified-tokens API - Emit notification failed for trackingId -> {}",
+                    trackingRecord.getTrackingId(), e);
             throw e;
         }
         log.debug("Notification sent successfully for request with trackingId: {}", trackingRecord.getTrackingId());
     }
 
-    private void processSubmitTokens(String trackingId, Object postTokens, String version, int tokenCount, String callerId, String receivedTimestamp, HttpServletRequest request) throws Exception {
+    private void processSubmitTokens(String trackingId, Object postTokens, String version, int tokenCount,
+                                     String callerId, String receivedTimestamp, HttpServletRequest request)
+            throws Exception {
+
         String requestURI = request.getRequestURI();
         String producerUri = ServletUriComponentsBuilder.fromContextPath(request).build().toUriString();
-        var stopWatch = new StopWatch().start();
-        var esStopWatch = new StopWatch();
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
+        StopWatch esStopWatch = new StopWatch();
         String inputArtifactUri = Utils.getNewInputArtifactUri(trackingId);
         try {
             fileStore.writeObject(inputArtifactUri, postTokens, false);
@@ -472,7 +567,7 @@ public class PUREServiceController {
         }
         stopWatch.stop();
         log.debug("Request stored in file store for trackingId - {}", trackingId.replace("\n", ""));
-        var trackingRecord = new TrackingRecord.Builder(trackingId)
+        TrackingRecord trackingRecord = new TrackingRecord.Builder(trackingId)
                 .setTokenCountReceived(tokenCount)
                 .setStatus(StatusEnum.NOT_YET_STARTED.toString())
                 .setCallerId(callerId)
@@ -481,24 +576,26 @@ public class PUREServiceController {
                 .setProducerUri(producerUri)
                 .setInputArtifactUri(inputArtifactUri)
                 .setReceivedTimestamp(receivedTimestamp)
-                .setTimeToWriteInputToFileStore(stopWatch.totalTime().getMillis()).build();
+                .setTimeToWriteInputToFileStore(stopWatch.getTotalTimeMillis()).build();
 
         esStopWatch.start();
         insertTrackingRecord(trackingRecord);
         esStopWatch.stop();
 
-        emitNotification(trackingRecord, esStopWatch.totalTime().getMillis());
+        emitNotification(trackingRecord, esStopWatch.getTotalTimeMillis());
     }
 
     private void onException(String trackingId) {
         try {
-            var trackingRecord = trackingStore.getTrackingRecord(trackingId);
+            TrackingRecord trackingRecord = trackingStore.getTrackingRecord(trackingId);
             if (trackingRecord != null && trackingRecord.getTrackingId() != null && !trackingRecord.getTrackingId().isEmpty()) {
                 trackingStore.updateRecord(trackingId, List.of("status", "errorDescription"),
-                        List.of(StatusEnum.ERRORED.toString(), "Internal error occurred while processing request"));
+                        List.of(StatusEnum.ERRORED.toString(),
+                                "Internal error occurred while processing request"));
             }
         } catch (IOException e) {
-            log.error("deidentified-tokens API - Error while updating status to ERRORED in tracking store for trackingId: {}", trackingId.replace("\n", ""), e);
+            log.error("deidentified-tokens API - Error while updating status to ERRORED in " +
+                    "tracking store for trackingId: {}", trackingId.replace("\n", ""), e);
         }
     }
 
@@ -509,11 +606,12 @@ public class PUREServiceController {
             log.error("Failed to insert Tracking Record for Tracking Id -> {}", trackingRecord.getTrackingId(), e);
             throw e;
         }
-        log.debug("Tracking record created & stored in tracking store for trackingId - {}", trackingRecord.getTrackingId());
+        log.debug("Tracking record created & stored in tracking store for trackingId - {}",
+                trackingRecord.getTrackingId());
     }
 
     private String validateRequestV2(PostTokensV2 postTokensV2) {
-        var sbValidationFailedFields = new StringBuilder();
+        StringBuilder sbValidationFailedFields = new StringBuilder();
         if (Objects.isNull(postTokensV2)) {
             sbValidationFailedFields.append(EMPTY_REQUEST_BODY_ERR_MSG);
             return sbValidationFailedFields.toString();
@@ -522,7 +620,7 @@ public class PUREServiceController {
             sbValidationFailedFields.append("deIdentifiedTokenTuples");
         } else {
             for (TokenTuple tokenTuple : postTokensV2.getDeIdentifiedTokenTuples()) {
-                if (tokenTuple == null || tokenTuple.getTokenType1() == null || tokenTuple.getTokenType2() == null ||
+                if (tokenTuple.getTokenType1() == null || tokenTuple.getTokenType2() == null ||
                         tokenTuple.getTokenType1().isEmpty() || tokenTuple.getTokenType2().isEmpty()) {
                     sbValidationFailedFields.append("Token(s) in a Tuple cannot be null/empty");
                     break;
@@ -532,56 +630,76 @@ public class PUREServiceController {
         return sbValidationFailedFields.toString();
     }
 
+    /**
+     * Performs the input request validation for getData API
+     */
     private boolean validateCallerId(String callerId) {
         return !StringUtils.isEmpty(callerId) && callerId.trim().length() > 0 && validCallerIds.contains(callerId);
     }
 
+    /**
+     * Returns the status based on response object
+     */
     private String getStatus(Object response) {
-        if (response instanceof TrackingStatus trackingStatus && trackingStatus.getStatus() != null) {
-            return trackingStatus.getStatus();
-        } else if (response != null) {
-            return StatusEnum.COMPLETED_SUCCESSFULLY.toString();
-        } else {
+        if (response != null) {
+            if (response instanceof TrackingStatus && ((TrackingStatus) response).getStatus() != null) {
+                return ((TrackingStatus) response).getStatus();
+            } else
+                return StatusEnum.COMPLETED_SUCCESSFULLY.toString();
+        } else
             return StatusEnum.ERRORED.toString();
-        }
     }
 
+    /**
+     * Method to construct & insert LogRecord into logstore
+     */
     private void insertLogRecord(String serviceName, String trackingId, String correlationId, String callerId, StopWatch stopWatch, String status) {
         stopWatch.stop();
-        var logRecord = new LogRecord(trackingId, correlationId, callerId, serviceName, status, Utils.getCurrentTimestamp(), stopWatch.totalTime().getMillis());
+        LogRecord logRecord = new LogRecord(trackingId, correlationId, callerId, serviceName, status,
+                Utils.getCurrentTimestamp(), stopWatch.getTotalTimeMillis());
         try {
             logStore.insertLogRecord(logRecord);
         } catch (IOException e) {
-            log.error("{} - Failed to insert log record into log store -> {}", serviceName.replace("\n", ""), logRecord, e);
+            log.error(serviceName.replace("\n", "") + " - Failed to insert log record into log store -> {}", logRecord, e);
         }
     }
 
+    /**
+     * Method to build callerId validation response
+     */
     private TrackingStatus buildCallerIdValidationResponse(String callerId) {
         String validationResponse = "Invalid Caller-Id - " + callerId;
         log.error("deidentified-tokens API Caller-Id validation failed: {}", validationResponse.replace("\n", ""));
         return new TrackingStatus(null, StatusEnum.INVALID.toString(), validationResponse);
     }
 
+    /**
+     * Method to build request validation response
+     */
     private TrackingStatus buildRequestValidationResponse(String validationResponse) {
         validationResponse = "Invalid/Missing values - " + validationResponse;
         log.error("deidentified-tokens API input payload validation failed for fields: {}", validationResponse.replace("\n", ""));
         return new TrackingStatus(null, StatusEnum.INVALID.toString(), validationResponse);
     }
 
+    /**
+     * Method to handle exception when the POST request body is empty
+     */
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    private TrackingStatus handleMissingRequestBody(Exception ex) {
+    public TrackingStatus handleMissingRequestBody(Exception ex) {
         return new TrackingStatus(null, StatusEnum.INVALID.toString(), EMPTY_REQUEST_BODY_ERR_MSG);
     }
 
     private String getAbstractPathfromServletPath(String path) {
-        var pattern = Pattern.compile("(.*)/");
-        var matcher = pattern.matcher(path);
+        Pattern pattern = Pattern.compile("(.*)/");
+        Matcher matcher = pattern.matcher(path);
         if (matcher.find()) {
             return matcher.group(1);
         }
         return path;
     }
 }
+
 =====================================================================================================================
 8. Test Classes (src/test/java/...)
 
