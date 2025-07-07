@@ -717,6 +717,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -726,21 +728,28 @@ import org.springframework.kafka.core.ProducerFactory;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
+// Enables Mockito's annotations (like @Spy, @InjectMocks) with JUnit 5 lifecycle
 @ExtendWith(MockitoExtension.class)
-class KafkaProducerConfigTest {
+final class KafkaProducerConfigTest {
 
+    // Creates a real instance of KafkaProducerConfig and allows partial mocking of its methods
     @Spy
     @InjectMocks
-    KafkaProducerConfig notificationProducerConfig;
+    private KafkaProducerConfig notificationProducerConfig;
 
+    // JUnit 5 setup method, runs before each test
     @BeforeEach
-    void setUp() {}
+    void setUp() {
+        // Initializes Mockito annotations in this test class context
+        MockitoAnnotations.openMocks(this);
+    }
 
+    // Tests that all required Kafka producer config properties are present in the bean's config map
     @Test
     void getProducerConfigTest() {
-        List<String> properties = Arrays.asList(
+        // List of all property keys we expect to see in the config
+        List<String> properties = List.of(
                 ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
                 ProducerConfig.CLIENT_ID_CONFIG,
                 ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
@@ -754,28 +763,34 @@ class KafkaProducerConfigTest {
                 "ssl.keystore.password",
                 "ssl.key.password"
         );
+        // Calls the bean's method to get the actual config map
         Map<String, Object> config = notificationProducerConfig.producerConfig();
-        properties.forEach(property -> assertTrue(config.containsKey(property)));
+        // Asserts that every expected property is present in the config map
+        properties.forEach(property -> assertTrue(config.containsKey(property),
+                "Missing property in producer config: " + property));
     }
 
+    // Tests that the bean's producerFactory() method returns a DefaultKafkaProducerFactory
     @Test
     void producerFactoryTest() {
-        KafkaProducerConfig config = spy(new KafkaProducerConfig());
-        doReturn(getProps()).when(config).producerConfig();
-
-        ProducerFactory<String, String> defaultKafkaProducerFactory = config.producerFactory();
+        // Mocks producerConfig() to return a sample properties map
+        Mockito.doReturn(getProps()).when(notificationProducerConfig).producerConfig();
+        // Calls the actual method to get the factory
+        ProducerFactory<String, String> defaultKafkaProducerFactory = notificationProducerConfig.producerFactory();
+        // Asserts that the result is of the expected class type
         assertEquals(DefaultKafkaProducerFactory.class, defaultKafkaProducerFactory.getClass());
     }
 
+    // Tests that the bean's kafkaTemplate() method returns a KafkaTemplate
     @Test
     void kafkaTemplateTest() {
-        KafkaProducerConfig config = spy(new KafkaProducerConfig());
-        doReturn(getProps()).when(config).producerConfig();
-
-        KafkaTemplate<String, String> kafkaTemplate = config.kafkaTemplate();
-        assertEquals(KafkaTemplate.class, kafkaTemplate.getClass());
+        // Mocks producerConfig() to return a sample properties map
+        Mockito.doReturn(getProps()).when(notificationProducerConfig).producerConfig();
+        // Calls the actual method to get the template
+        assertEquals(KafkaTemplate.class, notificationProducerConfig.kafkaTemplate().getClass());
     }
 
+    // Utility method for providing a sample producer config for mocking in tests above
     private Map<String, Object> getProps() {
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, ConfigurationManager.get("KAFKA_BROKERS"));
@@ -786,10 +801,14 @@ class KafkaProducerConfigTest {
         props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, ConfigurationManager.get("ENABLE_IDEMPOTENCE_CONFIG"));
         props.put("security.protocol", ConfigurationManager.get("SECURITY_PROTOCOL"));
         props.put("ssl.truststore.location", Utils.getKafkaResourcePath() + ConfigurationManager.get("SSL_TRUSTSTORE_FILE"));
+        props.put("ssl.truststore.password", ConfigurationManager.get("SSL_TRUSTSTORE_PASSWORD"));
         props.put("ssl.keystore.location", Utils.getKafkaResourcePath() + ConfigurationManager.get("SSL_KEYSTORE_FILE"));
+        props.put("ssl.keystore.password", ConfigurationManager.get("SSL_KEYSTORE_PASSWORD"));
+        props.put("ssl.key.password", ConfigurationManager.get("SSL_KEY_PASSWORD"));
         return props;
     }
 }
+
 ==================================================================================================================
 notificationstore/impl/KafkaProducerTest.java
 
@@ -797,68 +816,93 @@ package com.optum.pure.notificationstore.impl;
 
 import com.optum.pure.model.notification.Notification;
 import com.optum.pure.trackingstore.TrackingStore;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.*;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.util.concurrent.ListenableFuture;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
-class KafkaProducerTest {
+@ExtendWith(org.mockito.junit.jupiter.MockitoExtension.class)
+final class KafkaProducerTest {
 
-    @Mock
-    private KafkaTemplate<String, String> mockKafkaTemplate;
-    @Mock
-    private TrackingStore mockTrackingStore;
-
+    // Use @InjectMocks to create an instance of KafkaProducer and inject mocks into it
     @InjectMocks
     private KafkaProducer notificationStore;
 
+    @Mock
+    private KafkaTemplate<String, String> mockKafkaTemplate;
+
+    @Mock
+    private TrackingStore mockTrackingStore;
+
+    @Mock
+    private ListenableFuture<SendResult<String, String>> mockResult;
+
+    @Mock
+    private SendResult<String, String> mockSendResult;
+
+    @Mock
+    private RecordMetadata mockRecordMetadata;
+
     private Notification notification;
-    private long timeToInsertTrackingRecord = 11L;
+    private final long timeToInsertTrackingRecord = 11L;
 
     @BeforeEach
-    void setup() {
-        notification = new Notification("12345", "pure/test", "v1");
+    void setUp() {
+        // Set up a test notification
+        notification = new Notification("12345", "v1", "pure/test");
     }
 
+    // Test for notification == null; should throw Exception
     @Test
-    void sendNotificationFailure_NullNotification() {
+    void sendNotificationFailureTest_NullNotification() {
         Exception exception = assertThrows(Exception.class,
-                () -> notificationStore.sendNotification(null, timeToInsertTrackingRecord));
+            () -> notificationStore.sendNotification(null, timeToInsertTrackingRecord)
+        );
         assertEquals("Kafka Producer - Notification is null", exception.getMessage());
     }
 
+    // Test for KafkaTemplate sending failure; should throw Exception
     @Test
-    void sendNotificationSuccess() throws Exception {
-        SendResult<String, String> sendResult = mock(SendResult.class);
-        when(sendResult.getRecordMetadata()).thenReturn(null);
-
-        ListenableFuture<SendResult<String, String>> listenableFuture = mock(ListenableFuture.class);
-        when(listenableFuture.get()).thenReturn(sendResult);
-
-        when(mockKafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(listenableFuture);
-
-        Notification testNotification = new Notification("12345", "test", "v1");
-        assertDoesNotThrow(() -> notificationStore.sendNotification(testNotification, timeToInsertTrackingRecord));
-    }
-
-    @Test
-    void sendNotificationFailure_KafkaError() throws Exception {
+    void sendNotificationFailureTest_KafkaSendFails() throws Exception {
+        // Mock KafkaTemplate.send to throw exception
         when(mockKafkaTemplate.send(anyString(), anyString(), anyString()))
                 .thenThrow(new RuntimeException("Kafka error"));
 
-        Notification testNotification = new Notification("12345", "test", "v1");
-        assertThrows(Exception.class, () -> notificationStore.sendNotification(testNotification, timeToInsertTrackingRecord));
+        Exception exception = assertThrows(RuntimeException.class,
+            () -> notificationStore.sendNotification(notification, timeToInsertTrackingRecord)
+        );
+        assertEquals("Kafka error", exception.getMessage());
+    }
+
+    // Test successful send (happy path)
+    @Test
+    void sendNotificationSuccessTest() throws Exception {
+        // Setup mocks for async KafkaTemplate.send call chain
+        when(mockKafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(mockResult);
+        when(mockResult.get()).thenReturn(mockSendResult);
+        when(mockSendResult.getRecordMetadata()).thenReturn(mockRecordMetadata);
+        when(mockRecordMetadata.offset()).thenReturn(1L);
+        when(mockRecordMetadata.partition()).thenReturn(1);
+
+        // You may need to mock trackingStore.updateRecord as well if it's not void
+        doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+
+        // Should NOT throw any exception
+        assertDoesNotThrow(() -> notificationStore.sendNotification(notification, timeToInsertTrackingRecord));
     }
 }
+
+
 ========================================================================================================================
 service/PUREServiceControllerTest.java
 
@@ -869,8 +913,9 @@ import com.google.gson.Gson;
 import com.optum.pure.common.StatusEnum;
 import com.optum.pure.filestore.FileStore;
 import com.optum.pure.logstore.LogStore;
+import com.optum.pure.model.dto.v2.ResponseV2;
 import com.optum.pure.model.entity.TrackingStatus;
-import com.optum.pure.model.notification.Notification;
+import com.optum.pure.model.requestobjects.common.LogRecord;
 import com.optum.pure.model.requestobjects.common.TrackingRecord;
 import com.optum.pure.model.requestobjects.v2.PostTokensV2;
 import com.optum.pure.model.requestobjects.v2.TokenTuple;
@@ -880,10 +925,7 @@ import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 
@@ -891,10 +933,10 @@ import java.io.IOException;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
-class PUREServiceControllerTest {
+@ExtendWith(org.mockito.junit.jupiter.MockitoExtension.class)
+final class PUREServiceControllerTest {
 
     private static final String ERROR_MSG = "Unable to process the request";
     private static final String EMPTY_REQUEST_BODY_ERR_MSG = "Request body is empty";
@@ -902,8 +944,7 @@ class PUREServiceControllerTest {
     private static final String CALLER_ID = "devut";
 
     @InjectMocks
-    PUREServiceController pureServiceController;
-
+    private PUREServiceController pureServiceController;
     @Mock
     private TrackingStore mockTrackingStore;
     @Mock
@@ -914,111 +955,300 @@ class PUREServiceControllerTest {
     private Producer mockNotificationStore;
 
     private TrackingRecord trackingRecord;
+    private LogRecord logRecord;
+    private ResponseV2 responseV2;
     private PostTokensV2 postTokensV2;
     private MockHttpServletRequest mockHttpServletRequest;
+    private ObjectMapper mockObjectMapper;
 
     @BeforeEach
     void setUp() throws IOException {
+        List<String> tokens = new ArrayList<>(Arrays.asList("test1", "test2", "test3"));
         postTokensV2 = new PostTokensV2();
         trackingRecord = new TrackingRecord();
         trackingRecord.setTrackingId("test-tracking-id");
         trackingRecord.setStatus(StatusEnum.IN_PROGRESS.toString());
+        logRecord = new LogRecord();
+        responseV2 = new ResponseV2();
+        postTokensV2.setDeIdentifiedTokenTuples(Arrays.asList(new TokenTuple("tt1", "tt2"),
+                new TokenTuple("test-token1", "test-token2")));
         mockHttpServletRequest = new MockHttpServletRequest();
         mockHttpServletRequest.setScheme("http");
         mockHttpServletRequest.setServerName("localhost");
         mockHttpServletRequest.setServerPort(80);
         mockHttpServletRequest.setContextPath("/requestData");
-        Mockito.doNothing().when(mockLogStore).insertLogRecord(any());
-        postTokensV2.setDeIdentifiedTokenTuples(Arrays.asList(new TokenTuple("tt1", "tt2"), new TokenTuple("test-token1", "test-token2")));
+        mockObjectMapper = new ObjectMapper();
+        doNothing().when(mockLogStore).insertLogRecord(any());
     }
 
     @Test
-    void getClaimsEnrollmentsTest_Success() throws Exception {
-        Mockito.when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
-        Object result = pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID);
-        assertNotNull(result);
+    void getClaimsEnrollmentsTest() throws Exception {
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
+        assertNotNull(pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID));
     }
 
     @Test
-    void getClaimsEnrollmentsTest_InvalidCallerId() throws Exception {
-        Mockito.when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
-        TrackingStatus result = (TrackingStatus) pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, "");
-        assertEquals("INVALID", result.getStatus());
+    void getClaimsEnrollmentsTestValidationFailInValidCallerId() throws Exception {
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
+        TrackingStatus trackingStatus = (TrackingStatus) pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertEquals("test-tracking-id", trackingStatus.getTrackingId());
+        assertEquals("IN_PROGRESS", trackingStatus.getStatus());
+        assertNull(trackingStatus.getErrorDescription());
     }
 
     @Test
-    void getClaimsEnrollmentsTest_InvalidTrackingId() throws Exception {
+    void getClaimsEnrollmentsTestValidationFailInValidCallerIdAndTrackingId() throws Exception {
         trackingRecord.setTrackingId(null);
-        Mockito.when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
-        TrackingStatus result = (TrackingStatus) pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID);
-        assertEquals("INVALID", result.getStatus());
-        assertEquals(INVALID_TRACKING_ID, result.getErrorDescription());
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
+        TrackingStatus trackingStatus = (TrackingStatus) pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("INVALID", trackingStatus.getStatus());
+        assertEquals(INVALID_TRACKING_ID, trackingStatus.getErrorDescription());
     }
 
     @Test
-    void getClaimsEnrollmentsTest_TrackingStoreFail() throws Exception {
-        Mockito.when(mockTrackingStore.getTrackingRecord(anyString())).thenThrow(new IOException("test error"));
-        TrackingStatus result = (TrackingStatus) pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID);
-        assertEquals("ERRORED", result.getStatus());
-        assertEquals(ERROR_MSG, result.getErrorDescription());
+    void getClaimsEnrollmentsTestValidationFailInValidTrackingId() throws Exception {
+        trackingRecord.setTrackingId(null);
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
+        TrackingStatus trackingStatus = (TrackingStatus) pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("INVALID", trackingStatus.getStatus());
+        assertEquals(INVALID_TRACKING_ID, trackingStatus.getErrorDescription());
     }
 
     @Test
-    void getClaimsEnrollmentsTest_StatusCompleted() throws Exception {
+    void getClaimsEnrollmentsTestValidationFailEmptyBody() throws Exception {
+        trackingRecord = null;
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
+        TrackingStatus trackingStatus = (TrackingStatus) pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("INVALID", trackingStatus.getStatus());
+        assertEquals(INVALID_TRACKING_ID, trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void getClaimsEnrollmentsTestTrackingStoreFail() throws Exception {
+        when(mockTrackingStore.getTrackingRecord(anyString()))
+                .thenThrow(new IOException("test error"));
+        TrackingStatus trackingStatus = (TrackingStatus) pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertEquals("ERRORED", trackingStatus.getStatus());
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals(ERROR_MSG, trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void getClaimsEnrollmentsTestStatusCompleted() throws Exception {
         trackingRecord.setStatus("COMPLETED_SUCCESSFULLY");
-        Mockito.when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
-        Mockito.when(mockFileStore.readObject(anyString()))
-                .thenReturn(IOUtils.toByteArray(IOUtils.toInputStream(new ObjectMapper().writeValueAsString(new Object()))));
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
+        when(mockFileStore.readObject(anyString()))
+                .thenReturn(IOUtils.toByteArray(IOUtils.toInputStream(new ObjectMapper().writeValueAsString(responseV2))));
         ResponseEntity<?> responseEntity = (ResponseEntity<?>) pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID);
+        assertNotNull(responseEntity);
         assertEquals(200, responseEntity.getStatusCodeValue());
     }
 
     @Test
-    void submitTokensTestV2_Success() throws Exception {
-        Mockito.doNothing().when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
-        Mockito.doNothing().when(mockTrackingStore).insertTrackingRecord(any());
-        Mockito.doNothing().when(mockNotificationStore).sendNotification(any(), anyLong());
-        Mockito.doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
-
-        String requestBody = new Gson().toJson(postTokensV2);
-        TrackingStatus status = pureServiceController.submitDeidentifiedTokensV2(requestBody, mockHttpServletRequest, CALLER_ID);
-        assertNotNull(status.getTrackingId());
-        assertNull(status.getStatus());
-        assertNull(status.getErrorDescription());
+    void getClaimsEnrollmentsTestUpdateTimeException() throws Exception {
+        trackingRecord.setStatus("COMPLETED_SUCCESSFULLY");
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
+        when(mockFileStore.readObject(anyString()))
+                .thenReturn(IOUtils.toByteArray(IOUtils.toInputStream(new ObjectMapper().writeValueAsString(responseV2))));
+        doThrow(new IOException("test")).when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        assertNotNull(pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID));
     }
 
     @Test
-    void submitTokensTestV2_EmptyRequest() throws Exception {
-        String requestBody = new Gson().toJson(null);
-        TrackingStatus status = pureServiceController.submitDeidentifiedTokensV2(requestBody, mockHttpServletRequest, CALLER_ID);
-        assertEquals("INVALID", status.getStatus());
-        assertEquals("Invalid/Missing values - " + EMPTY_REQUEST_BODY_ERR_MSG, status.getErrorDescription());
+    void submitTokensTestV2() throws Exception {
+        doNothing().when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
+        doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        doNothing().when(mockNotificationStore).sendNotification(any(), anyLong());
+        doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2), mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNotNull(trackingStatus.getTrackingId());
+        assertNull(trackingStatus.getStatus());
+        assertNull(trackingStatus.getErrorDescription());
     }
 
     @Test
-    void submitTokensTestV2_EmptyCallerId() throws Exception {
-        String requestBody = new Gson().toJson(postTokensV2);
-        TrackingStatus status = pureServiceController.submitDeidentifiedTokensV2(requestBody, mockHttpServletRequest, "");
-        assertEquals("INVALID", status.getStatus());
-        assertEquals("Invalid Caller-Id - ", status.getErrorDescription());
+    void submitTokensTestEmptyRequestV2() throws Exception {
+        postTokensV2 = null;
+        doNothing().when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
+        doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        doNothing().when(mockNotificationStore).sendNotification(any(), anyLong());
+        doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2), mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("INVALID", trackingStatus.getStatus());
+        assertEquals("Invalid/Missing values - " + EMPTY_REQUEST_BODY_ERR_MSG, trackingStatus.getErrorDescription());
     }
 
     @Test
-    void submitTokensTestV2_InvalidTokenTuple() throws Exception {
+    void submitTokensTestEmptyCallerIdV2() throws Exception {
+        doNothing().when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
+        doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        doNothing().when(mockNotificationStore).sendNotification(any(), anyLong());
+        doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2), mockHttpServletRequest, "");
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("INVALID", trackingStatus.getStatus());
+        assertEquals("Invalid Caller-Id - ", trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void submitTokensTestNullTokensV2() throws Exception {
+        List<Object> list = new ArrayList<>();
+        list.add(new Object());
+        postTokensV2.setDeIdentifiedTokenTuples(list);
+        doNothing().when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
+        doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        doNothing().when(mockNotificationStore).sendNotification(any(), anyLong());
+        doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2), mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("INVALID", trackingStatus.getStatus());
+        assertEquals("Invalid/Missing values - Token(s) in a Tuple cannot be null/empty", trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void submitTokensTestEmptyTokensV2() throws Exception {
+        postTokensV2.setDeIdentifiedTokenTuples(new ArrayList<>());
+        doNothing().when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
+        doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        doNothing().when(mockNotificationStore).sendNotification(any(), anyLong());
+        doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2), mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("INVALID", trackingStatus.getStatus());
+        assertEquals("Invalid/Missing values - deIdentifiedTokenTuples", trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void submitTokensTestInvalidTokenTupleV2() throws Exception {
         postTokensV2.setDeIdentifiedTokenTuples(Collections.singletonList(new TokenTuple("abc", "")));
-        String requestBody = new Gson().toJson(postTokensV2);
-        TrackingStatus status = pureServiceController.submitDeidentifiedTokensV2(requestBody, mockHttpServletRequest, CALLER_ID);
-        assertEquals("INVALID", status.getStatus());
-        assertEquals("Invalid/Missing values - Token(s) in a Tuple cannot be null/empty", status.getErrorDescription());
+        doNothing().when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
+        doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        doNothing().when(mockNotificationStore).sendNotification(any(), anyLong());
+        doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2), mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("INVALID", trackingStatus.getStatus());
+        assertEquals("Invalid/Missing values - Token(s) in a Tuple cannot be null/empty", trackingStatus.getErrorDescription());
     }
 
     @Test
-    void submitTokensTestV2_TrackingStoreInsertFail() throws Exception {
-        Mockito.doNothing().when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
-        Mockito.doThrow(new IOException("test-exception")).when(mockTrackingStore).insertTrackingRecord(any());
-        String requestBody = new Gson().toJson(postTokensV2);
-        TrackingStatus status = pureServiceController.submitDeidentifiedTokensV2(requestBody, mockHttpServletRequest, CALLER_ID);
-        assertEquals("ERRORED", status.getStatus());
-        assertEquals(ERROR_MSG, status.getErrorDescription());
+    void submitTokensTestTrackingStoreFailV2() throws Exception {
+        doNothing().when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
+        doThrow(new IOException("test-exception")).when(mockTrackingStore).insertTrackingRecord(any());
+        doNothing().when(mockNotificationStore).sendNotification(any(), anyLong());
+        doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2), mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("ERRORED", trackingStatus.getStatus());
+        assertEquals(ERROR_MSG, trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void submitTokensTestFileStoreFailV2() throws Exception {
+        doThrow(new InterruptedException("test")).when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
+        doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        doNothing().when(mockNotificationStore).sendNotification(any(), anyLong());
+        doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2), mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("ERRORED", trackingStatus.getStatus());
+        assertEquals(ERROR_MSG, trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void submitTokensTestTrackingStoreGetFailV2() throws Exception {
+        doThrow(new InterruptedException("test")).when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
+        doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        doNothing().when(mockNotificationStore).sendNotification(any(), anyLong());
+        doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2), mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("ERRORED", trackingStatus.getStatus());
+        assertEquals(ERROR_MSG, trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void submitTokensTestTrackingStoreEmitNotificationFail() throws Exception {
+        doNothing().when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
+        doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        doThrow(new Exception()).when(mockNotificationStore).sendNotification(any(), anyLong());
+        doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2), mockHttpServletRequest, CALLER_ID);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("ERRORED", trackingStatus.getStatus());
+        assertEquals(ERROR_MSG, trackingStatus.getErrorDescription());
+
+    }
+
+    @Test
+    void getClaimsEnrollmentsResponseFailTest() throws Exception {
+        trackingRecord.setStatus("COMPLETED_SUCCESSFULLY");
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
+        when(mockFileStore.readObject(anyString())).thenThrow(IOException.class);
+        TrackingStatus trackingStatus = (TrackingStatus)pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("ERRORED", trackingStatus.getStatus());
+        assertEquals(ERROR_MSG, trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void submitTokensTestTrackingStoreInsertLogRecordFailTest() throws Exception {
+        doNothing().when(mockFileStore).writeObject(anyString(),any(), anyBoolean());
+        doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        doThrow(new Exception()).when(mockNotificationStore).sendNotification(any(), anyLong());
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenThrow(IOException.class);
+        doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        doThrow(new IOException()).when(mockLogStore).insertLogRecord(any());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2),mockHttpServletRequest, CALLER_ID);
+
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("ERRORED", trackingStatus.getStatus());
+        assertEquals(ERROR_MSG, trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void submitTokensTestTrackingStoreOnExceptionTest() throws Exception {
+        doNothing().when(mockFileStore).writeObject(anyString(),any(), anyBoolean());
+        doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        doThrow(new Exception()).when(mockNotificationStore).sendNotification(any(), anyLong());
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
+        doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2),mockHttpServletRequest, CALLER_ID);
+
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("ERRORED", trackingStatus.getStatus());
+        assertEquals(ERROR_MSG, trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void submitTokensTestTrackingStoreOnExceptionTest1() throws Exception {
+        doNothing().when(mockFileStore).writeObject(anyString(),any(), anyBoolean());
+        doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        doThrow(new Exception()).when(mockNotificationStore).sendNotification(any(), anyLong());
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenThrow(IOException.class);
+        doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2),mockHttpServletRequest, CALLER_ID);
+
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("ERRORED", trackingStatus.getStatus());
+        assertEquals(ERROR_MSG, trackingStatus.getErrorDescription());
     }
 }
