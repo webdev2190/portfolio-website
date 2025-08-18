@@ -1,4 +1,4 @@
-Build.gradle
+gradle version
 
 buildscript {
     repositories {
@@ -8,7 +8,7 @@ buildscript {
     dependencies {
         classpath 'org.springframework.boot:spring-boot-gradle-plugin:3.2.2'
         classpath 'io.spring.gradle:dependency-management-plugin:1.1.5'
-//        classpath "org.sonarsource.scanner.gradle:sonarqube-gradle-plugin:6.2.0.5505"
+//        classpath "org.sonarqube.gradle.plugin:org.sonarqube.gradle.plugin:6.0.0.5145"
     }
 }
 
@@ -17,7 +17,6 @@ plugins {
     id 'eclipse'
     id 'idea'
     id 'jacoco'
-//    id("org.sonarqube") version "6.2.0.5505"
 }
 
 apply plugin: 'org.springframework.boot'
@@ -28,20 +27,6 @@ apply plugin: 'io.spring.dependency-management'
 configurations.all {
     exclude group: 'commons-logging', module: 'commons-logging'
 }
-
-sourceSets {
-    main {
-        java {
-            srcDirs = ['src/main/java']
-        }
-    }
-    test {
-        java {
-            srcDirs = ['src/test/java']
-        }
-    }
-}
-
 
 group = 'com.optum.pure'
 version = '0.1.0'
@@ -61,15 +46,8 @@ repositories {
     maven {
         url 'https://repo1.uhc.com/artifactory/repoauth'
         credentials {
-//            username = System.getenv("DOCKER_USERNAME")
-//            password = System.getenv("DOCKER_PASSWORD")
-
-            username = "runx_ohhlload";
-            password = "ohLOA35U";
-
-
-
-
+            username = System.getenv("DOCKER_USERNAME")
+            password = System.getenv("DOCKER_PASSWORD")
         }
     }
     maven {
@@ -107,26 +85,26 @@ dependencyManagement {
 //    }
 //}
 
-//def gitBranch() {
-//    def branch = ""
-//    def proc = "git rev-parse --abbrev-ref HEAD".execute()
-//    proc.in.eachLine { line -> branch = line }
-//    proc.err.eachLine { line -> println line }
-//    proc.waitFor()
-//    return branch
-//}
-//println gitBranch()
+def gitBranch() {
+    def branch = ""
+    def proc = "git rev-parse --abbrev-ref HEAD".execute()
+    proc.in.eachLine { line -> branch = line }
+    proc.err.eachLine { line -> println line }
+    proc.waitFor()
+    return branch
+}
+println gitBranch()
 
 dependencies {
+    implementation files('C:/Users/ahaldar1/Desktop/workspace/OHHL-project/orx-ls-ohhl-pure-shared-lib/build/libs/ohhl-pure-shared-lib-1.0-SNAPSHOT.jar')
 
-//    implementation files('C:/Users/ahaldar1/Desktop/workspace/OHHL-project/orx-ls-ohhl-pure-shared-lib/build/libs/ohhl-pure-shared-lib-1.0-SNAPSHOT.jar')
-    implementation group: 'ohhlpure.common.lib', name: 'ohhl-pure-shared-lib', version: '1.0-SNAPSHOT'
     // Lombok
     compileOnly 'org.projectlombok:lombok:1.18.32'
     annotationProcessor 'org.projectlombok:lombok:1.18.32'
 
     // SLF4J (for logging)
     implementation 'org.slf4j:slf4j-api:2.0.13'
+
 
 
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
@@ -156,21 +134,10 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
     // PURE common lib dep, pick version based on branch
-//    if (gitBranch() == "master" || gitBranch() == "origin/master") {
-//        implementation 'ohhlpure.common.lib:ohhl-pure-shared-lib:2.0-SNAPSHOT'
-//    } else {
-//        implementation 'ohhlpure.common.lib:ohhl-pure-shared-lib:1.0-SNAPSHOT'
-//    }
-
-
-    def branch = findProperty('branch') ?: 'default'
-
-    dependencies {
-        if (branch == "master" || branch == "origin/master") {
-            implementation group: 'ohhlpure.common.lib', name: 'ohhl-pure-shared-lib', version: '2.0-SNAPSHOT'
-        } else {
-            implementation group: 'ohhlpure.common.lib', name: 'ohhl-pure-shared-lib', version: '1.0-SNAPSHOT'
-        }
+    if (gitBranch() == "master" || gitBranch() == "origin/master") {
+        implementation 'ohhlpure.common.lib:ohhl-pure-shared-lib:2.0-SNAPSHOT'
+    } else {
+        implementation 'ohhlpure.common.lib:ohhl-pure-shared-lib:1.0-SNAPSHOT'
     }
 
     // TESTS
@@ -198,30 +165,10 @@ jacocoTestReport {
     }
 }
 
-//task printGitBranch {
-//    doLast {
-//        def branch = "git rev-parse --abbrev-ref HEAD".execute().text.trim()
-//        println "Current branch: $branch"
-//    }
-//}
-tasks.register('printGitBranch', Exec) {
-    commandLine 'git', 'rev-parse', '--abbrev-ref', 'HEAD'
-    standardOutput = new ByteArrayOutputStream()
-    doLast {
-        println "Current branch: ${standardOutput.toString().trim()}"
-    }
+task copyDependencies(type: Copy) {
+    from configurations.runtimeClasspath
+    into 'dependencies'
 }
-
-
-tasks.register('copyDependencies', Copy) {
-    from(configurations.runtimeClasspath)
-    into('dependencies')
-}
-
-//task copyDependencies(type: Copy) {
-//    from configurations.runtimeClasspath
-//    into 'dependencies'
-//}
 
 test {
     useJUnitPlatform()
@@ -235,7 +182,7 @@ test {
     }
 }
 
-----------------------------------------------------------------------------------------------------------------
+//===================================================================================
 PureConfig
 
 package com.optum.pure.config;
@@ -270,9 +217,10 @@ public class PureConfig {
 
     }
 }
------------------------------------------------------------
 
-KafkaProducerConfig
+//==========================================================================
+
+KafkaProducerconfig
 
 package com.optum.pure.notificationstore.config;
 
@@ -302,7 +250,24 @@ public class KafkaProducerConfig {
      * <p>
      * Uses ConfigurationManager to read environment or application properties.
      */
-
+//    @Bean
+//    public Map<String, Object> producerConfig() {
+//        Map<String, Object> props = new HashMap<>();
+//        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, ConfigurationManager.get("KAFKA_BROKERS"));
+//        props.put(ProducerConfig.CLIENT_ID_CONFIG, ConfigurationManager.get("CLIENT_ID"));
+//        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+//        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+//        props.put(ProducerConfig.ACKS_CONFIG, ConfigurationManager.get("PRODUCER_ACK_CONFIG"));
+//        props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, ConfigurationManager.get("ENABLE_IDEMPOTENCE_CONFIG"));
+//        // SSL/SASL configuration
+//        props.put("security.protocol", ConfigurationManager.get("SECURITY_PROTOCOL"));
+//        props.put("ssl.truststore.location", Utils.getKafkaResourcePath() + ConfigurationManager.get("SSL_TRUSTSTORE_FILE"));
+//        props.put("ssl.truststore.password", ConfigurationManager.get("SSL_TRUSTSTORE_PASSWORD"));
+//        props.put("ssl.keystore.location", Utils.getKafkaResourcePath() + ConfigurationManager.get("SSL_KEYSTORE_FILE"));
+//        props.put("ssl.keystore.password", ConfigurationManager.get("SSL_KEYSTORE_PASSWORD"));
+//        props.put("ssl.key.password", ConfigurationManager.get("SSL_KEY_PASSWORD"));
+//        return props;
+//    }
     @Bean
     public Map<String, Object> producerConfig() {
         Map<String, Object> props = new HashMap<>();
@@ -361,8 +326,9 @@ public class KafkaProducerConfig {
     }
 }
 
---------------------------------------------------------------------------------
-KafkaProducer
+//==============================================================================
+
+Impl-kafkaProducer
 
 
 // This code is part of a larger system that handles notifications using Kafka and tracks their processing time.
@@ -379,13 +345,12 @@ import org.elasticsearch.common.StopWatch;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
-import org.springframework.util.concurrent.ListenableFuture;
+//import org.springframework.util.concurrent.ListenableFuture;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-
 
 /**
  * Kafka Notification Store - Producer implementation
@@ -449,7 +414,7 @@ public final class KafkaProducer implements Producer {
 
             // Await send result for metadata/logging
 //            SendResult<String, String> sendResult = result.get();
-//            SendResult<String, String> sendResult = result.get(); //Blocking call to get the result
+            SendResult<String, String> sendResult = result.get(); //Blocking call to get the result
 
             log.debug("Kafka Producer - Notification sent with key: {}, to topic: {} with partition: {} & offset: {}",
                     trackingId, sendResult.getRecordMetadata().topic(),
@@ -471,11 +436,10 @@ public final class KafkaProducer implements Producer {
         }
     }
 
-----------------------------------------------------------------------------------------------------------------------
+//=======================================================================================================
 
 Producer
 
-// Project: notificationstore
 package com.optum.pure.notificationstore;
 
 import com.optum.pure.model.notification.Notification;
@@ -484,9 +448,9 @@ public interface Producer {
     void sendNotification(Notification notification, long elapsedTimeTrackingRecordInsertion) throws Exception;
 }
 
------------------------------------------------------------------------------------------------------------------
+//================================================================================================
 
-PUREServiceController
+Service-PUREServiceController
 
 // This is a Java class for a REST controller that handles requests related to claims enrollments and de-identified tokens.
 package com.optum.pure.service;
@@ -864,8 +828,7 @@ public final class PUREServiceController {
     }
 }
 
---------------------------------------------------------------------------------------------------------------
-
+//==========================================================================================
 Application
 
 package com.optum.pure;
@@ -887,9 +850,650 @@ public class Application {
     }
 }
 
+//====================================================================================================
+
+Test Cases code
+
+KafkaProducerConfigTest
+
+// This file is part of the Optum Pure Notification Store project.
+package com.optum.pure.notificationstore.config;
+
+import com.optum.pure.common.ConfigurationManager;
+import com.optum.pure.common.Utils;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
+
+import java.util.*;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+// Enables Mockito's annotations (like @Spy, @InjectMocks) with JUnit 5 lifecycle
+@ExtendWith(MockitoExtension.class)
+final class KafkaProducerConfigTest {
+
+    // Creates a real instance of KafkaProducerConfig and allows partial mocking of its methods
+    @Spy
+    @InjectMocks
+    private KafkaProducerConfig notificationProducerConfig;
+    private MockedStatic<ConfigurationManager> configurationManagerMock;
+    private MockedStatic<Utils> utilsMock;
+
+    // JUnit 5 setup method, runs before each test
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+        configurationManagerMock = Mockito.mockStatic(ConfigurationManager.class);
+        configurationManagerMock.when(() -> ConfigurationManager.get(Mockito.anyString()))
+                .thenReturn("dummy");
+        utilsMock = Mockito.mockStatic(Utils.class);
+        utilsMock.when(Utils::getKafkaResourcePath)
+                .thenReturn("/dummy/path/");
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (configurationManagerMock != null) configurationManagerMock.close();
+        if (utilsMock != null) utilsMock.close();
+    }
 
 
-Error i got
 
-C:\Users\ahaldar1\Producer-Pure\orx-ls-ohhl-pure\src\main\java\com\optum\pure\config\PureConfig.java:3: error: package com.optum.pure.filestore does not exist
+    // Tests that all required Kafka producer config properties are present in the bean's config map
+    @Test
+    void getProducerConfigTest() {
+        // List of all property keys we expect to see in the config
+        List<String> properties = List.of(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                ProducerConfig.CLIENT_ID_CONFIG,
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+                ProducerConfig.ACKS_CONFIG,
+                ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG,
+                "security.protocol",
+                "ssl.truststore.location",
+                "ssl.truststore.password",
+                "ssl.keystore.location",
+                "ssl.keystore.password",
+                "ssl.key.password"
+        );
+        // Calls the bean's method to get the actual config map
+        Map<String, Object> config = notificationProducerConfig.producerConfig();
+        // Asserts that every expected property is present in the config map
+        properties.forEach(property -> assertTrue(config.containsKey(property),
+                "Missing property in producer config: " + property));
+    }
+
+    // Tests that the bean's producerFactory() method returns a DefaultKafkaProducerFactory
+    @Test
+    void producerFactoryTest() {
+        // Mocks producerConfig() to return a sample properties map
+        Mockito.doReturn(getProps()).when(notificationProducerConfig).producerConfig();
+        // Calls the actual method to get the factory
+        ProducerFactory<String, String> defaultKafkaProducerFactory = notificationProducerConfig.producerFactory();
+        // Asserts that the result is of the expected class type
+        assertEquals(DefaultKafkaProducerFactory.class, defaultKafkaProducerFactory.getClass());
+    }
+
+    // Tests that the bean's kafkaTemplate() method returns a KafkaTemplate
+    @Test
+    void kafkaTemplateTest() {
+        // Mocks producerConfig() to return a sample properties map
+        Mockito.doReturn(getProps()).when(notificationProducerConfig).producerConfig();
+        // Calls the actual method to get the template
+        assertEquals(KafkaTemplate.class, notificationProducerConfig.kafkaTemplate().getClass());
+    }
+
+    // Utility method for providing a sample producer config for mocking in tests above
+    private Map<String, Object> getProps() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, ConfigurationManager.get("KAFKA_BROKERS"));
+        props.put(ProducerConfig.CLIENT_ID_CONFIG, ConfigurationManager.get("CLIENT_ID"));
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        props.put(ProducerConfig.ACKS_CONFIG, ConfigurationManager.get("PRODUCER_ACK_CONFIG"));
+        props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, ConfigurationManager.get("ENABLE_IDEMPOTENCE_CONFIG"));
+        props.put("security.protocol", ConfigurationManager.get("SECURITY_PROTOCOL"));
+        props.put("ssl.truststore.location", Utils.getKafkaResourcePath() + ConfigurationManager.get("SSL_TRUSTSTORE_FILE"));
+        props.put("ssl.truststore.password", ConfigurationManager.get("SSL_TRUSTSTORE_PASSWORD"));
+        props.put("ssl.keystore.location", Utils.getKafkaResourcePath() + ConfigurationManager.get("SSL_KEYSTORE_FILE"));
+        props.put("ssl.keystore.password", ConfigurationManager.get("SSL_KEYSTORE_PASSWORD"));
+        props.put("ssl.key.password", ConfigurationManager.get("SSL_KEY_PASSWORD"));
+        return props;
+    }
+}
+
+//================================================================================================
+
+Impl-KafkaProducerTest
+
+
+
+package com.optum.pure.notificationstore.impl;
+
+import java.util.concurrent.CompletableFuture;
+import com.optum.pure.model.notification.Notification;
+import com.optum.pure.trackingstore.TrackingStore;
+import org.apache.kafka.clients.producer.RecordMetadata;
+import org.elasticsearch.common.util.concurrent.ListenableFuture;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
+//import org.springframework.util.concurrent.ListenableFuture;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(org.mockito.junit.jupiter.MockitoExtension.class)
+final class KafkaProducerTest {
+
+    // Use @InjectMocks to create an instance of KafkaProducer and inject mocks into it
+    @InjectMocks
+    private KafkaProducer notificationStore;
+
+    @Mock
+    private KafkaTemplate<String, String> mockKafkaTemplate;
+
+    @Mock
+    private TrackingStore mockTrackingStore;
+
+    @Mock
+    private ListenableFuture<SendResult<String, String>> mockResult;
+
+
+    @Mock
+    private SendResult<String, String> mockSendResult;
+
+    @Mock
+    private RecordMetadata mockRecordMetadata;
+
+    private Notification notification;
+    private final long timeToInsertTrackingRecord = 11L;
+
+    @BeforeEach
+    void setUp() {
+        // Set up a test notification
+        notification = new Notification("12345", "v1", "pure/test");
+    }
+
+    // Test for notification == null; should throw Exception
+
+    @Test
+    void sendNotificationFailureTest_NullNotification() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> notificationStore.sendNotification(null, timeToInsertTrackingRecord)
+        );
+        assertEquals("Kafka Producer - Notification is null", exception.getMessage());
+    }// This test checks that the method throws an IllegalArgumentException when a null notification is passed.
+
+
+    // Test for KafkaTemplate sending failure; should throw Exception
+    /**Mocks mockKafkaTemplate.send to throw a RuntimeException.
+     Calls sendNotification and expects the same exception.
+     Asserts the exception message.*/
+
+    @Test
+    void sendNotificationFailureTest_KafkaSendFails() throws Exception {
+        // Mock KafkaTemplate.send to throw exception
+        when(mockKafkaTemplate.send(anyString(), anyString(), anyString()))
+                .thenThrow(new RuntimeException("Kafka error"));
+
+        Exception exception = assertThrows(RuntimeException.class,
+                () -> notificationStore.sendNotification(notification, timeToInsertTrackingRecord)
+        );
+        assertEquals("Kafka error", exception.getMessage());
+    }
+
+    // Test successful send (happy path)
+
+    @Test
+    void sendNotificationSuccessTest() throws Exception {
+        // Use CompletableFuture for mocking
+        CompletableFuture<SendResult<String, String>> completableFuture = CompletableFuture.completedFuture(mockSendResult);
+
+        when(mockKafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(completableFuture);
+        when(mockSendResult.getRecordMetadata()).thenReturn(mockRecordMetadata);
+        when(mockRecordMetadata.offset()).thenReturn(1L);
+        when(mockRecordMetadata.partition()).thenReturn(1);
+
+        // You may need to mock trackingStore.updateRecord as well if it's not void
+        doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+
+        // Should NOT throw any exception
+        assertDoesNotThrow(() -> notificationStore.sendNotification(notification, timeToInsertTrackingRecord));
+    }
+}
+
+//==================================================================================================================
+
+Service-PUREServiceControllerTest
+
+
+package com.optum.pure.service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
+import com.optum.pure.common.StatusEnum;
 import com.optum.pure.filestore.FileStore;
+import com.optum.pure.logstore.LogStore;
+import com.optum.pure.model.dto.v2.ResponseV2;
+import com.optum.pure.model.entity.TrackingStatus;
+import com.optum.pure.model.requestobjects.common.LogRecord;
+import com.optum.pure.model.requestobjects.common.TrackingRecord;
+import com.optum.pure.model.requestobjects.v2.PostTokensV2;
+import com.optum.pure.model.requestobjects.v2.TokenTuple;
+import com.optum.pure.notificationstore.Producer;
+import com.optum.pure.trackingstore.TrackingStore;
+import org.apache.commons.io.IOUtils;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+import static org.mockito.ArgumentMatchers.any;
+
+import java.io.IOException;
+import java.util.*;
+
+import static org.mockito.Mockito.lenient;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.nio.charset.StandardCharsets;
+
+//@ExtendWith(SpringExtension.class)
+@ExtendWith(org.mockito.junit.jupiter.MockitoExtension.class)
+
+//@WebMvcTest(PUREServiceController.class)
+final class PUREServiceControllerTest {
+
+    private static final String ERROR_MSG = "Unable to process the request";
+    private static final String EMPTY_REQUEST_BODY_ERR_MSG = "Request body is empty";
+    private static final String INVALID_TRACKING_ID = "Invalid trackingId";
+    private static final String CALLER_ID = "devut";
+
+    @InjectMocks
+    private PUREServiceController pureServiceController;
+    @Mock
+    private TrackingStore mockTrackingStore;
+    @Mock
+    private FileStore mockFileStore;
+    @Mock
+    private LogStore mockLogStore;
+    @Mock
+    private Producer mockNotificationStore;
+
+    private TrackingRecord trackingRecord;
+    private LogRecord logRecord;
+    private ResponseV2 responseV2;
+    private PostTokensV2 postTokensV2;
+    private MockHttpServletRequest mockHttpServletRequest;
+    private ObjectMapper mockObjectMapper;
+
+    @BeforeEach
+    void setUp() throws IOException {
+        List<String> tokens = new ArrayList<>(Arrays.asList("test1", "test2", "test3"));
+        postTokensV2 = new PostTokensV2();
+        trackingRecord = new TrackingRecord();
+        trackingRecord.setTrackingId("test-tracking-id");
+        trackingRecord.setStatus(StatusEnum.IN_PROGRESS.toString());
+        logRecord = new LogRecord();
+        responseV2 = new ResponseV2();
+        postTokensV2.setDeIdentifiedTokenTuples(Arrays.asList(new TokenTuple("tt1", "tt2"), new TokenTuple("test-token1", "test-token2")));
+        mockHttpServletRequest = new MockHttpServletRequest();
+        mockHttpServletRequest.setScheme("http");
+        mockHttpServletRequest.setServerName("localhost");
+        mockHttpServletRequest.setServerPort(80);
+        mockHttpServletRequest.setContextPath("/requestData");
+        mockObjectMapper = new ObjectMapper();
+        lenient().doNothing().when(mockLogStore).insertLogRecord(any());
+    }
+
+    @Test
+    void getClaimsEnrollmentsTest() throws Exception {
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
+        assertNotNull(pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID));
+    }
+
+    @Test
+    void getClaimsEnrollmentsTestValidationFailInValidCallerId() throws Exception {
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
+        TrackingStatus trackingStatus = (TrackingStatus) pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertEquals("test-tracking-id", trackingStatus.getTrackingId());
+        assertEquals("IN_PROGRESS", trackingStatus.getStatus());
+        assertNull(trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void getClaimsEnrollmentsTestValidationFailInValidCallerIdAndTrackingId() throws Exception {
+        trackingRecord.setTrackingId(null);
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
+        TrackingStatus trackingStatus = (TrackingStatus) pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("INVALID", trackingStatus.getStatus());
+        assertEquals(INVALID_TRACKING_ID, trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void getClaimsEnrollmentsTestValidationFailInValidTrackingId() throws Exception {
+        trackingRecord.setTrackingId(null);
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
+        TrackingStatus trackingStatus = (TrackingStatus) pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("INVALID", trackingStatus.getStatus());
+        assertEquals(INVALID_TRACKING_ID, trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void getClaimsEnrollmentsTestValidationFailEmptyBody() throws Exception {
+        trackingRecord = null;
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
+        TrackingStatus trackingStatus = (TrackingStatus) pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("INVALID", trackingStatus.getStatus());
+        assertEquals(INVALID_TRACKING_ID, trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void getClaimsEnrollmentsTestTrackingStoreFail() throws Exception {
+        when(mockTrackingStore.getTrackingRecord(anyString()))
+                .thenThrow(new IOException("test error"));
+        TrackingStatus trackingStatus = (TrackingStatus) pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertEquals("ERRORED", trackingStatus.getStatus());
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals(ERROR_MSG, trackingStatus.getErrorDescription());
+    }
+
+
+    @Test
+    void getClaimsEnrollmentsTestStatusCompleted() throws Exception {
+        trackingRecord.setStatus("COMPLETED_SUCCESSFULLY");
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
+
+//        when(mockFileStore.readObject(any()))
+        when(mockFileStore.readObject(any()))//TODO Here also i have changes anyString to any.
+                .thenReturn(IOUtils.toByteArray(IOUtils.toInputStream(new ObjectMapper().writeValueAsString(responseV2))));
+        Object result = pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID);
+
+        assertNotNull(result);
+        assertTrue(result instanceof ResponseEntity, "Expected ResponseEntity but got " + result.getClass());
+        ResponseEntity<?> responseEntity = (ResponseEntity<?>) result;
+        assertEquals(200, ((ResponseEntity<?>) result).getStatusCode().value());//TODO replce by responseEntity.getStatusCodeValue()
+// Optionally, check the body type/content if needed
+
+    }
+    // Expect TrackingStatus, not ResponseEntity
+    @Test
+    void getClaimsEnrollmentsTestStatusCompleted_Variant() throws Exception {
+        trackingRecord.setStatus("COMPLETED_SUCCESSFULLY");
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
+//        when(mockFileStore.readObject(any()))
+
+        when(mockFileStore.readObject(any()))//TODO Changes anyString to only any
+                .thenReturn(IOUtils.toByteArray(IOUtils.toInputStream(new ObjectMapper().writeValueAsString(responseV2))));
+        Object result = pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID);
+
+        assertNotNull(result);
+        assertTrue(result instanceof TrackingStatus || result instanceof ResponseEntity);
+
+
+        if (result instanceof ResponseEntity) {
+            assertEquals(200, ((ResponseEntity<?>) result).getStatusCode().value());
+        } else if (result instanceof TrackingStatus) {
+            // Add assertions for TrackingStatus if needed
+        }
+    }
+
+    @Test
+    void submitTokensTestV2() throws Exception {
+        lenient().doNothing().when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
+        lenient().doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        lenient().doNothing().when(mockNotificationStore).sendNotification(any(), anyLong());
+        lenient().doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2), mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNotNull(trackingStatus.getTrackingId());
+        assertNull(trackingStatus.getStatus());
+        assertNull(trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void submitTokensTestEmptyRequestV2() throws Exception {
+        postTokensV2 = null;
+        lenient().doNothing().when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
+        lenient().doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        lenient().doNothing().when(mockNotificationStore).sendNotification(any(), anyLong());
+        lenient().doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2), mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("INVALID", trackingStatus.getStatus());
+        assertEquals("Invalid/Missing values - " + EMPTY_REQUEST_BODY_ERR_MSG, trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void submitTokensTestEmptyCallerIdV2() throws Exception {
+        lenient().doNothing().when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
+        lenient().doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        lenient().doNothing().when(mockNotificationStore).sendNotification(any(), anyLong());
+        lenient().doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2), mockHttpServletRequest, "");
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("INVALID", trackingStatus.getStatus());
+        assertEquals("Invalid Caller-Id - ", trackingStatus.getErrorDescription());
+    }
+
+
+
+    @Test
+    void submitTokensTestNullTokensV2() throws Exception {
+        List<TokenTuple> list = new ArrayList<>();
+        list.add(new TokenTuple("abc", "")); // Use empty string for invalid value
+        postTokensV2.setDeIdentifiedTokenTuples(list);
+        lenient().doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        lenient().doNothing().when(mockNotificationStore).sendNotification(any(), anyLong());
+        lenient().doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2), mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("INVALID", trackingStatus.getStatus());
+        assertEquals("Invalid/Missing values - Token(s) in a Tuple cannot be null/empty", trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void submitTokensTestEmptyTokensV2() throws Exception {
+        postTokensV2.setDeIdentifiedTokenTuples(new ArrayList<>());
+        lenient().doNothing().when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
+        lenient().doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        lenient().doNothing().when(mockNotificationStore).sendNotification(any(), anyLong());
+        lenient().doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2), mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("INVALID", trackingStatus.getStatus());
+        assertEquals("Invalid/Missing values - deIdentifiedTokenTuples", trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void submitTokensTestInvalidTokenTupleV2() throws Exception {
+        postTokensV2.setDeIdentifiedTokenTuples(Collections.singletonList(new TokenTuple("abc", "")));
+        lenient().doNothing().when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
+        lenient().doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        lenient().doNothing().when(mockNotificationStore).sendNotification(any(), anyLong());
+        lenient().doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2), mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("INVALID", trackingStatus.getStatus());
+        assertEquals("Invalid/Missing values - Token(s) in a Tuple cannot be null/empty", trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void submitTokensTestTrackingStoreFailV2() throws Exception {
+        lenient().doNothing().when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
+        doThrow(new IOException("test-exception")).when(mockTrackingStore).insertTrackingRecord(any());
+        lenient().doNothing().when(mockNotificationStore).sendNotification(any(), anyLong());
+        lenient().doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2), mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("ERRORED", trackingStatus.getStatus());
+        assertEquals(ERROR_MSG, trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void submitTokensTestFileStoreFailV2() throws Exception {
+        doThrow(new InterruptedException("test")).when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
+        lenient().doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        lenient().doNothing().when(mockNotificationStore).sendNotification(any(), anyLong());
+        lenient().doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2), mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("ERRORED", trackingStatus.getStatus());
+        assertEquals(ERROR_MSG, trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void submitTokensTestTrackingStoreGetFailV2() throws Exception {
+        doThrow(new InterruptedException("test")).when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
+        lenient().doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        lenient().doNothing().when(mockNotificationStore).sendNotification(any(), anyLong());
+        lenient().doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2), mockHttpServletRequest, CALLER_ID);
+        assertNotNull(trackingStatus);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("ERRORED", trackingStatus.getStatus());
+        assertEquals(ERROR_MSG, trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void submitTokensTestTrackingStoreEmitNotificationFail() throws Exception {
+        lenient().doNothing().when(mockFileStore).writeObject(anyString(), any(), anyBoolean());
+        lenient().doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        doThrow(new Exception()).when(mockNotificationStore).sendNotification(any(), anyLong());
+        lenient().doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2), mockHttpServletRequest, CALLER_ID);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("ERRORED", trackingStatus.getStatus());
+        assertEquals(ERROR_MSG, trackingStatus.getErrorDescription());
+
+    }
+
+    @Test
+    void getClaimsEnrollmentsResponseFailTest() throws Exception {
+        trackingRecord.setStatus("COMPLETED_SUCCESSFULLY");
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
+//        when(mockFileStore.readObject(anyString())).thenThrow(IOException.class);
+
+        when(mockFileStore.readObject(any())).thenThrow(IOException.class); //TODO This will match any argument, including null, and resolve the stubbing mismatch error.
+        TrackingStatus trackingStatus = (TrackingStatus)pureServiceController.getClaimsEnrollments("12345", mockHttpServletRequest, CALLER_ID);
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("ERRORED", trackingStatus.getStatus());
+        assertEquals(ERROR_MSG, trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void submitTokensTestTrackingStoreInsertLogRecordFailTest() throws Exception {
+        lenient().doNothing().when(mockFileStore).writeObject(anyString(),any(), anyBoolean());
+        lenient().doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        doThrow(new Exception()).when(mockNotificationStore).sendNotification(any(), anyLong());
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenThrow(IOException.class);
+        lenient().doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        doThrow(new IOException()).when(mockLogStore).insertLogRecord(any());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2),mockHttpServletRequest, CALLER_ID);
+
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("ERRORED", trackingStatus.getStatus());
+        assertEquals(ERROR_MSG, trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void submitTokensTestTrackingStoreOnExceptionTest() throws Exception {
+        doNothing().when(mockFileStore).writeObject(anyString(),any(), anyBoolean());
+        doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        doThrow(new Exception()).when(mockNotificationStore).sendNotification(any(), anyLong());
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenReturn(trackingRecord);
+        doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2),mockHttpServletRequest, CALLER_ID);
+
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("ERRORED", trackingStatus.getStatus());
+        assertEquals(ERROR_MSG, trackingStatus.getErrorDescription());
+    }
+
+    @Test
+    void submitTokensTestTrackingStoreOnExceptionTest1() throws Exception {
+        lenient().doNothing().when(mockFileStore).writeObject(anyString(),any(), anyBoolean());
+        lenient().doNothing().when(mockTrackingStore).insertTrackingRecord(any());
+        doThrow(new Exception()).when(mockNotificationStore).sendNotification(any(), anyLong());
+        when(mockTrackingStore.getTrackingRecord(anyString())).thenThrow(IOException.class);
+        lenient().doNothing().when(mockTrackingStore).updateRecord(anyString(), anyList(), anyList());
+        TrackingStatus trackingStatus = pureServiceController.submitDeidentifiedTokensV2(new Gson().toJson(postTokensV2),mockHttpServletRequest, CALLER_ID);
+
+        assertNull(trackingStatus.getTrackingId());
+        assertEquals("ERRORED", trackingStatus.getStatus());
+        assertEquals(ERROR_MSG, trackingStatus.getErrorDescription());
+    }
+}
+
+//======================================================================================
+
+settings.gradle
+
+// This file is used to configure the Gradle build system for the project.
+
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+        maven { url "https://plugins.gradle.org/m2/" }
+        maven {
+
+            url 'https://repo1.uhc.com/artifactory/repoauth'
+            credentials {
+
+                username = System.getenv("DOCKER_USERNAME")
+                password = System.getenv("DOCKER_PASSWORD")
+
+            }
+        }
+    }
+    plugins {
+        id 'org.springframework.boot' version '3.2.2'
+        id 'io.spring.dependency-management' version '1.1.4'
+        id("org.sonarqube") version "6.0.0.5145"
+
+    }
+}
+
+rootProject.name = 'ohhl-pure-producer'
+
+
