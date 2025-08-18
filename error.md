@@ -1497,3 +1497,205 @@ pluginManagement {
 rootProject.name = 'ohhl-pure-producer'
 
 
+//=======================================================================
+Error i got
+
+13:04:31: Executing 'build'...
+
+
+> Configure project :
+branch-ohhl-pure-producer-java21
+
+> Task :compileJava FAILED
+1 actionable task: 1 executed
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\config\PureConfig.java:3: error: package com.optum.pure.filestore does not exist
+import com.optum.pure.filestore.FileStore;
+                               ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\config\PureConfig.java:4: error: package com.optum.pure.filestore.factory does not exist
+import com.optum.pure.filestore.factory.FileStoreFactory;
+                                       ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\config\PureConfig.java:5: error: package com.optum.pure.logstore does not exist
+import com.optum.pure.logstore.LogStore;
+                              ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\config\PureConfig.java:6: error: package com.optum.pure.logstore.factory does not exist
+import com.optum.pure.logstore.factory.LogStoreFactory;
+                                      ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\config\PureConfig.java:7: error: package com.optum.pure.trackingstore does not exist
+import com.optum.pure.trackingstore.TrackingStore;
+                                   ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\config\PureConfig.java:8: error: package com.optum.pure.trackingstore.factory does not exist
+import com.optum.pure.trackingstore.factory.TrackingStoreFactory;
+                                           ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\config\PureConfig.java:17: error: cannot find symbol
+    public TrackingStore trackingStore() {
+           ^
+  symbol:   class TrackingStore
+  location: class PureConfig
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\config\PureConfig.java:23: error: cannot find symbol
+    public FileStore fileStore() {
+           ^
+  symbol:   class FileStore
+  location: class PureConfig
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\config\PureConfig.java:28: error: cannot find symbol
+    public LogStore logStore() {
+           ^
+  symbol:   class LogStore
+  location: class PureConfig
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\notificationstore\config\KafkaProducerConfig.java:3: error: package com.optum.pure.common does not exist
+import com.optum.pure.common.ConfigurationManager;
+                            ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\notificationstore\config\KafkaProducerConfig.java:4: error: package com.optum.pure.common does not exist
+import com.optum.pure.common.Utils;
+                            ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\notificationstore\impl\KafkaProducer.java:6: error: package com.optum.pure.common does not exist
+import com.optum.pure.common.ConfigurationManager;
+                            ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\notificationstore\impl\KafkaProducer.java:7: error: package com.optum.pure.model.notification does not exist
+import com.optum.pure.model.notification.Notification;
+                                        ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\notificationstore\impl\KafkaProducer.java:9: error: package com.optum.pure.trackingstore does not exist
+import com.optum.pure.trackingstore.TrackingStore;
+                                   ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\notificationstore\Producer.java:65: error: package com.optum.pure.model.notification does not exist
+import com.optum.pure.model.notification.Notification;
+                                        ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\notificationstore\impl\KafkaProducer.java:50: error: cannot find symbol
+    private final TrackingStore trackingStore;
+                  ^
+  symbol:   class TrackingStore
+  location: class KafkaProducer
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\notificationstore\impl\KafkaProducer.java:53: error: cannot find symbol
+    public KafkaProducer(KafkaTemplate<String, String> kafkaTemplate, TrackingStore trackingStore) {
+                                                                      ^
+  symbol:   class TrackingStore
+  location: class KafkaProducer
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\notificationstore\impl\KafkaProducer.java:59: error: cannot find symbol
+    public void sendNotification(Notification notification, long elapsedTimeTrackingRecordInsertion) throws Exception {
+                                 ^
+  symbol:   class Notification
+  location: class KafkaProducer
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\notificationstore\Producer.java:68: error: cannot find symbol
+    void sendNotification(Notification notification, long elapsedTimeTrackingRecordInsertion) throws Exception;
+                          ^
+  symbol:   class Notification
+  location: interface Producer
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:8: error: package com.optum.pure.common does not exist
+import com.optum.pure.common.ConfigurationManager;
+                            ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:9: error: package com.optum.pure.common does not exist
+import com.optum.pure.common.StatusEnum;
+                            ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:10: error: package com.optum.pure.common does not exist
+import com.optum.pure.common.Utils;
+                            ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:11: error: package com.optum.pure.filestore does not exist
+import com.optum.pure.filestore.FileStore;
+                               ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:12: error: package com.optum.pure.logstore does not exist
+import com.optum.pure.logstore.LogStore;
+                              ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:13: error: package com.optum.pure.model.entity does not exist
+import com.optum.pure.model.entity.TrackingStatus;
+                                  ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:14: error: package com.optum.pure.model.notification does not exist
+import com.optum.pure.model.notification.Notification;
+                                        ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:15: error: package com.optum.pure.model.requestobjects.common does not exist
+import com.optum.pure.model.requestobjects.common.LogRecord;
+                                                 ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:16: error: package com.optum.pure.model.requestobjects.common does not exist
+import com.optum.pure.model.requestobjects.common.TrackingRecord;
+                                                 ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:17: error: package com.optum.pure.model.requestobjects.v2 does not exist
+import com.optum.pure.model.requestobjects.v2.PostTokensV2;
+                                             ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:18: error: package com.optum.pure.model.requestobjects.v2 does not exist
+import com.optum.pure.model.requestobjects.v2.TokenTuple;
+                                             ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:20: error: package com.optum.pure.trackingstore does not exist
+import com.optum.pure.trackingstore.TrackingStore;
+                                   ^
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:64: error: cannot find symbol
+    private final TrackingStore trackingStore;
+                  ^
+  symbol:   class TrackingStore
+  location: class PUREServiceController
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:65: error: cannot find symbol
+    private final FileStore fileStore;
+                  ^
+  symbol:   class FileStore
+  location: class PUREServiceController
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:66: error: cannot find symbol
+    private final LogStore logStore;
+                  ^
+  symbol:   class LogStore
+  location: class PUREServiceController
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:112: error: cannot find symbol
+    private TrackingRecord fetchTrackingRecord(String trackingId, int retries) throws IOException {
+            ^
+  symbol:   class TrackingRecord
+  location: class PUREServiceController
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:118: error: cannot find symbol
+    private Object getResponse(TrackingRecord trackingRecord) throws IOException {
+                               ^
+  symbol:   class TrackingRecord
+  location: class PUREServiceController
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:140: error: cannot find symbol
+    private void updateRecord(TrackingRecord trackingRecord, StopWatch stopWatch) {
+                              ^
+  symbol:   class TrackingRecord
+  location: class PUREServiceController
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:152: error: cannot find symbol
+    public TrackingStatus submitDeidentifiedTokensV2(@RequestBody String requestObject,
+           ^
+  symbol:   class TrackingStatus
+  location: class PUREServiceController
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:194: error: cannot find symbol
+    private void emitNotification(TrackingRecord trackingRecord, long timeToWriteTrackingRecord) throws Exception {
+                                  ^
+  symbol:   class TrackingRecord
+  location: class PUREServiceController
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:268: error: cannot find symbol
+    private void insertTrackingRecord(TrackingRecord trackingRecord) throws IOException {
+                                      ^
+  symbol:   class TrackingRecord
+  location: class PUREServiceController
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:280: error: cannot find symbol
+    private String validateRequestV2(PostTokensV2 postTokensV2) {
+                                     ^
+  symbol:   class PostTokensV2
+  location: class PUREServiceController
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:344: error: cannot find symbol
+    private TrackingStatus buildCallerIdValidationResponse(String callerId) {
+            ^
+  symbol:   class TrackingStatus
+  location: class PUREServiceController
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:353: error: cannot find symbol
+    private TrackingStatus buildRequestValidationResponse(String validationResponse) {
+            ^
+  symbol:   class TrackingStatus
+  location: class PUREServiceController
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:363: error: cannot find symbol
+    public TrackingStatus handleMissingRequestBody(Exception ex) {
+           ^
+  symbol:   class TrackingStatus
+  location: class PUREServiceController
+C:\Users\ahaldar1\PURE-TEST\orx-ls-ohhl-pure\src\main\java\com\optum\pure\service\PUREServiceController.java:48: error: cannot find symbol
+@RequiredArgsConstructor
+^
+  symbol:   class TrackingStore
+  location: class PUREServiceController
+45 errors
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileJava'.
+> Compilation failed; see the compiler error output for details.
+
+* Try:
+> Run with --info option to get more log output.
+> Run with --scan to get full insights.
+
+BUILD FAILED in 5s
+13:04:37: Execution finished 'build'.
